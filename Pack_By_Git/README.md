@@ -8,7 +8,10 @@ Install [Python](https://www.python.org/downloads)
 python.exe -m pip install --upgrade pip
 pip install pyinstaller
 ```
-
+Install [Git](https://git-scm.com/install/windows)
+```shell
+winget install --id Git.Git -e --source winget
+```
 ```shell
 git clone --recurse-submodules https://github.com/openscopeproject/InteractiveHtmlBom.git
 cd InteractiveHtmlBom
