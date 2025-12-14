@@ -33,7 +33,7 @@ Copy `automated_build.ps1` and `bomicon.ico` into `InteractiveHtmlBom`.
 >\---tests
 >```
 
-`automated_build.ps1` must be changed to ANSI from UTF-8.
+Change `automated_build.ps1`  from UTF-8 to ANSI.
 
 >```shell
 >Set-Content -Path "automated_build.ps1" -Value (Get-Content -Path "automated_build.ps1" -Raw  -Encoding UTF8) -Encoding Default
