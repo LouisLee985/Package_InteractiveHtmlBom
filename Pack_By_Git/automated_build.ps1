@@ -331,6 +331,12 @@ except ImportError:
     # 精确替换顶层的 'from wx import FileConfig' 语句
     $ConfigContent = $ConfigContent -replace 'from wx import FileConfig', $ReplacementBlock
     
+    # 2.修改配置默认值
+    Write-Host "        -> 调整默认配置值..."
+    $ConfigContent = $ConfigContent -replace 'dark_mode = False', 'dark_mode = True'
+    $ConfigContent = $ConfigContent -replace "bom_dest_dir = 'bom/'  # This is relative to pcb file directory", "bom_dest_dir = ''  # This is relative to pcb file directory"
+    $ConfigContent = $ConfigContent -replace "bom_name_format = 'ibom'", "bom_name_format = '%f'"
+    
     # 统一缩进（可选但推荐）
     $ConfigContent = $ConfigContent -replace "`t", "    " 
 
