@@ -269,10 +269,6 @@ def show_dialog(config, parser):
     $StubContent | Set-Content $SettingsDialogFile -Encoding UTF8
     Write-Host "settings_dialog.py 已成功生成 CLI 桩文件。"
 
-
-
-
-
     # -------------------------------------------------------------------------
     # 2.2. 针对 __init__.py 的修正：移除 wx 导入 (解决最新错误)
     # -------------------------------------------------------------------------
@@ -300,7 +296,7 @@ def show_dialog(config, parser):
     $NewContentLines | Set-Content $InitFile -Encoding UTF8
     Write-Host "__init__.py 最终修正完成。"
 
-# -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # 2.4. 针对 dialog_base.py 的修正：强制禁用 wx 导入 (最终 GUI 依赖修复)
     # -------------------------------------------------------------------------
     $DialogBaseFile = "InteractiveHtmlBom\dialog\dialog_base.py"
@@ -341,7 +337,7 @@ except ImportError:
     $ConfigContent | Set-Content $ConfigFile -Encoding UTF8
     Write-Host "config.py 导入封装完成."
 
-# -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # 2.3. 针对 ibom.py 的修正：强制逐行禁用 wx 导入 (解决最新错误)
     # -------------------------------------------------------------------------
     $IbomFile = "InteractiveHtmlBom\core\ibom.py"
@@ -449,10 +445,10 @@ def main():
     # -------------------------------------------------------------------------
     # 4. 执行 PyInstaller 打包 (切换到 --onedir 模式)
     # -------------------------------------------------------------------------
-Write-Host ""
-Write-Host "4. 正在执行 PyInstaller 打包 (使用 --onedir)..."
+    Write-Host ""
+    Write-Host "4. 正在执行 PyInstaller 打包 (使用 --onedir)..."
 
-# 使用数组传递参数
+    # 使用数组传递参数
 $PyInstallerArgs = @(
     "--noconfirm",
     "--onedir", # 切换为单目录模式
