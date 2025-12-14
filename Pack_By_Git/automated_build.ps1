@@ -26,7 +26,7 @@ $SourceFilesToModify = @(
     "InteractiveHtmlBom\dialog\settings_dialog.py",
     "InteractiveHtmlBom\dialog\__init__.py",
     "InteractiveHtmlBom\core\config.py",
-    "InteractiveHtmlBom\__init__.py", # <-- 新增或确认
+    "InteractiveHtmlBom\__init__.py",
     "InteractiveHtmlBom\core\ibom.py",
     "InteractiveHtmlBom\generate_interactive_bom.py"
     "InteractiveHtmlBom\dialog\dialog_base.py"
@@ -299,7 +299,7 @@ except ImportError:
     # 2.5.2. 修改配置默认值
     Write-Host "        -> 调整默认配置值..."
     $ConfigContent = $ConfigContent -replace 'dark_mode = False', 'dark_mode = True'
-    $ConfigContent = $ConfigContent -replace "bom_dest_dir = 'bom/'  # This is relative to pcb file directory", "bom_dest_dir = ''  # This is relative to pcb file directory"
+    $ConfigContent = $ConfigContent -replace "bom_dest_dir = 'bom/'  # This is relative to pcb file directory", "bom_dest_dir = ''"
     $ConfigContent = $ConfigContent -replace "bom_name_format = 'ibom'", "bom_name_format = '%f'"
     
     # 2.5.3. 统一缩进（可选但推荐）
@@ -345,7 +345,7 @@ except ImportError:
     # 2.7.1. 修复 wx 导入
     $GenBomContent = $GenBomContent -replace 'import wx', '# import wx'
     
-    # 2.7.2. 关键修复：替换 main 函数开头到第一个绝对导入之间的所有 wx/GUI 启动代码
+    # 2.7.2. 替换 main 函数开头到第一个绝对导入之间的所有 wx/GUI 启动代码
     $replacementBlock = @"
 def main():
     create_wx_app = 'INTERACTIVE_HTML_BOM_NO_DISPLAY' not in os.environ
@@ -391,7 +391,7 @@ def main():
     # 2.7.4.4. 移除所有之前尝试修复的 PyInstaller 路径注入残留块
     $GenBomContent = $GenBomContent -replace '^\s*# --- PyInstaller Module Fix ---.*?# --- PyInstaller Module Fix ---\s*', ''
 
-    # 2.7.5. 【绝对导入替换】全面替换所有相对导入为绝对导入 (解决 _internal 错误)
+    # 2.7.5. 全面替换所有相对导入为绝对导入 (解决 _internal 错误)
     Write-Host "   -> 终极导入修复：全面替换相对导入为绝对导入..."
     $GenBomContent = $GenBomContent -replace 'from \.core import ibom', 'from InteractiveHtmlBom.core import ibom' # 确保 main() 函数后的第一个导入也被修正
     $GenBomContent = $GenBomContent -replace 'from \.core\.config import Config', 'from InteractiveHtmlBom.core.config import Config'
@@ -424,13 +424,13 @@ def main():
         "--noconfirm",
         "--onedir", # 切换为单目录模式
         "--icon", "bomicon.ico",
-        # 解决 ModuleNotFoundError 的关键
+        # 解决 ModuleNotFoundError
         "--hidden-import", "InteractiveHtmlBom.core",
         "--hidden-import", "InteractiveHtmlBom.ecad",
         "--hidden-import", "InteractiveHtmlBom.errors",
         "--hidden-import", "InteractiveHtmlBom.version",
         "--hidden-import", "InteractiveHtmlBom.dialog",
-        # 关键修正：添加整个包目录到可执行文件根目录
+        # 添加整个包目录到可执行文件根目录
         "--add-data", "InteractiveHtmlBom;InteractiveHtmlBom",
         # 设置 EXE 名称
         "--name", "generate_interactive_bom",
@@ -438,7 +438,7 @@ def main():
         "InteractiveHtmlBom\generate_interactive_bom.py"
     )
 
-    # 关键修复：临时保存当前的 $ErrorActionPreference 并将其设置为 SilentlyContinue
+    # 临时保存当前的 $ErrorActionPreference 并将其设置为 SilentlyContinue
     $OriginalErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = "SilentlyContinue"
 
@@ -446,7 +446,7 @@ def main():
         # 执行 PyInstaller，并将其输出管道化，以确保所有内容都进入标准输出
         & pyinstaller $PyInstallerArgs *>&1
     } catch {
-        # 即使设置了 SilentlyContinue，如果仍有异常，这里会捕获
+        # 设置了 SilentlyContinue，如果仍有异常，这里会捕获
         Write-Host "PyInstaller 执行中仍捕获到异常，请检查其输出。" -ForegroundColor Red
     } finally {
         # 恢复原来的 $ErrorActionPreference
