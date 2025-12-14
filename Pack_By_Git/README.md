@@ -39,16 +39,15 @@ Change `automated_build.ps1`  from UTF-8 to ANSI.
 >Set-Content -Path "automated_build.ps1" -Value (Get-Content -Path "automated_build.ps1" -Raw  -Encoding UTF8) -Encoding Default
 >```
 
+Package
+
 >```shell
 >Set-ExecutionPolicy -Scope CurrentUser Bypass -Force
->```
-Package
->```shell
 >.\automated_build.ps1
 >```
 
 Move `REG_HKCR_BOM.bat` into `InteractiveHtmlBom\dist\generate_interactive_bom\` , then share `generate_interactive_bom`.
 <br><br>
-Double click `REG_HKCR_BOM.bat` .
+Double click `REG_HKCR_BOM.bat` in `generate_interactive_bom`.
 <br><br>
 Shift + Rightclick `.json` from [EasyEDA Std Edition](https://easyeda.com/), Select `InteractiveBom`, enjoy.
