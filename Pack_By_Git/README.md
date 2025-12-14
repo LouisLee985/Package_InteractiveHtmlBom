@@ -11,6 +11,7 @@ Install [Python](https://www.python.org/downloads)
 
 >```shell
 >git clone --recurse-submodules https://github.com/openscopeproject/InteractiveHtmlBom.git
+>cd InteractiveHtmlBom
 >```
 
 Copy `automated_build.ps1` and `bomicon.ico` into `InteractiveHtmlBom`.
