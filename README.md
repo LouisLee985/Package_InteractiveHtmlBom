@@ -1,2 +1,1 @@
-# Package_InteractiveHtmlBom
-
+### How to Package [InteractiveHtmlBom](https://github.com/openscopeproject/InteractiveHtmlBom/tree/432e702d068a538683c55abd345c5756456e376b) for [EasyEDA Std Edition](https://easyeda.com/)  on Windows
