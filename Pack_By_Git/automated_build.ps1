@@ -15,32 +15,13 @@ function exit_script {
     param([string]$message)
     Write-Host ""
     Write-Host "=======================================================" -ForegroundColor Red
-    Write-Host "? 错误: $message" -ForegroundColor Red
+    Write-Host "❌ 错误: $message" -ForegroundColor Red
     Write-Host "=======================================================" -ForegroundColor Red
     $Global:ErrorOccurred = $true
     exit 1
 }
 
-function restore_file {
-    param([string]$targetFile, [string]$backupFile)
-    if (Test-Path $backupFile) {
-        Copy-Item $backupFile $targetFile -Force
-        Remove-Item $backupFile
-        Write-Host "   -> $targetFile 已恢复."
-    }
-}
-
-function backup_and_modify_file {
-    param([string]$targetFile)
-    $backupFile = "$targetFile.bak"
-    if (Test-Path $targetFile) {
-        Copy-Item $targetFile $backupFile -Force
-        return $backupFile
-    }
-    return $null
-}
-
-# 需要修改的源文件列表
+# 列出需要修改的源文件
 $SourceFilesToModify = @(
     "InteractiveHtmlBom\dialog\settings_dialog.py",
     "InteractiveHtmlBom\dialog\__init__.py",
@@ -51,29 +32,13 @@ $SourceFilesToModify = @(
     "InteractiveHtmlBom\dialog\dialog_base.py"
 )
 
-# 备份所有文件的哈希表
-$BackupFiles = @{}
-
 # -----------------------------------------------------------------------------
 # 2. 源代码修改
 # -----------------------------------------------------------------------------
 
 try {
-    Write-Host "1. 正在备份源代码文件..."
-    foreach ($file in $SourceFilesToModify) {
-        $backup = backup_and_modify_file $file
-        if ($backup) {
-            $BackupFiles[$file] = $backup
-        }
-    }
-    Write-Host "备份完成."
-    
-    Write-Host ""
-    Write-Host "2. 正在修改源代码文件以消除 wx 和 pcbnew 依赖..."
+    Write-Host "1. 正在修改源代码文件以消除 wx 和 pcbnew 依赖..."
 
-    # -------------------------------------------------------------------------
-    # 2.1. 针对 settings_dialog.py 的修改：桩类和依赖
-    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
     # 2.1. 针对 settings_dialog.py 的修改：生成完整的 CLI 桩文件
     # -------------------------------------------------------------------------
@@ -270,18 +235,18 @@ def show_dialog(config, parser):
     Write-Host "settings_dialog.py 已成功生成 CLI 桩文件。"
 
     # -------------------------------------------------------------------------
-    # 2.2. 针对 __init__.py 的修正：移除 wx 导入 (解决最新错误)
+    # 2.2. 针对 __init__.py 的修正：移除 wx 导入
     # -------------------------------------------------------------------------
     $InitFile = "InteractiveHtmlBom\__init__.py"
     Write-Host "   -> 修正 __init__.py (强制逐行禁用 wx 导入)..."
     
-    # 1. 以 UTF8 编码逐行读取文件内容
+    # 2.2.1. 以 UTF8 编码逐行读取文件内容
     $InitContentLines = Get-Content $InitFile -Encoding UTF8
     
-    # 2. 创建一个新的内容数组
+    # 2.2.2. 创建一个新的内容数组
     $NewContentLines = @()
     
-    # 3. 逐行检查并修改
+    # 2.2.3. 逐行检查并修改
     foreach ($line in $InitContentLines) {
         # 检查行是否包含 'import wx' (不区分大小写，忽略前后空白)
         if ($line.Trim() -like "import wx*") {
@@ -292,12 +257,12 @@ def show_dialog(config, parser):
         }
     }
     
-    # 4. 以 UTF8 编码将修改后的内容写入文件
+    # 2.2.4. 以 UTF8 编码将修改后的内容写入文件
     $NewContentLines | Set-Content $InitFile -Encoding UTF8
     Write-Host "__init__.py 最终修正完成。"
 
     # -------------------------------------------------------------------------
-    # 2.4. 针对 dialog_base.py 的修正：强制禁用 wx 导入 (最终 GUI 依赖修复)
+    # 2.3. 针对 dialog_base.py 的修正：强制禁用 wx 导入 (空桩文件)
     # -------------------------------------------------------------------------
     $DialogBaseFile = "InteractiveHtmlBom\dialog\dialog_base.py"
     Write-Host "   -> 修正 dialog_base.py (用空桩文件替换)..."
@@ -313,10 +278,10 @@ def show_dialog(config, parser):
     Write-Host "dialog_base.py 已被替换为 CLI 桩文件，彻底解决所有 wx/缩进问题。"
 
     # -------------------------------------------------------------------------
-    # 2.3. 针对 config.py 的修正：封装 wx 导入
+    # 2.5. 针对 config.py 的修正：封装 wx 导入 & 配置默认值
     # -------------------------------------------------------------------------
     $ConfigFile = "InteractiveHtmlBom\core\config.py"
-    Write-Host "   -> 修正 config.py (封装 wx 导入)..."
+    Write-Host "   -> 修正 config.py (封装 wx 导入 & 配置默认值)..."
     $ConfigContent = Get-Content $ConfigFile -Raw
     
     # 定义您期望的替换块
@@ -328,34 +293,34 @@ except ImportError:
     FileConfig = None
 "@
 
-    # 精确替换顶层的 'from wx import FileConfig' 语句
+    # 2.5.1. 精确替换顶层的 'from wx import FileConfig' 语句
     $ConfigContent = $ConfigContent -replace 'from wx import FileConfig', $ReplacementBlock
     
-    # 2.修改配置默认值
+    # 2.5.2. 修改配置默认值
     Write-Host "        -> 调整默认配置值..."
     $ConfigContent = $ConfigContent -replace 'dark_mode = False', 'dark_mode = True'
     $ConfigContent = $ConfigContent -replace "bom_dest_dir = 'bom/'  # This is relative to pcb file directory", "bom_dest_dir = ''  # This is relative to pcb file directory"
     $ConfigContent = $ConfigContent -replace "bom_name_format = 'ibom'", "bom_name_format = '%f'"
     
-    # 统一缩进（可选但推荐）
+    # 2.5.3. 统一缩进（可选但推荐）
     $ConfigContent = $ConfigContent -replace "`t", "    " 
 
     $ConfigContent | Set-Content $ConfigFile -Encoding UTF8
     Write-Host "config.py 导入封装完成."
 
     # -------------------------------------------------------------------------
-    # 2.3. 针对 ibom.py 的修正：强制逐行禁用 wx 导入 (解决最新错误)
+    # 2.6. 针对 ibom.py 的修正：强制逐行禁用 wx 导入
     # -------------------------------------------------------------------------
     $IbomFile = "InteractiveHtmlBom\core\ibom.py"
     Write-Host "   -> 修正 ibom.py (强制逐行禁用 wx 导入)..."
     
-    # 1. 以 UTF8 编码逐行读取文件内容
+    # 2.6.1. 以 UTF8 编码逐行读取文件内容
     $IbomContentLines = Get-Content $IbomFile -Encoding UTF8
     
-    # 2. 创建一个新的内容数组
+    # 2.6.2. 创建一个新的内容数组
     $NewContentLines = @()
     
-    # 3. 逐行检查并修改
+    # 2.6.3. 逐行检查并修改
     foreach ($line in $IbomContentLines) {
         # 检查行是否包含 'import wx' (不区分大小写，忽略前后空白)
         if ($line.Trim() -like "import wx*") {
@@ -366,21 +331,21 @@ except ImportError:
         }
     }
     
-    # 4. 以 UTF8 编码将修改后的内容写入文件
+    # 2.6.4. 以 UTF8 编码将修改后的内容写入文件
     $NewContentLines | Set-Content $IbomFile -Encoding UTF8
     Write-Host "ibom.py 最终修正完成。"
 
     # -------------------------------------------------------------------------
-    # 2.4. 针对 generate_interactive_bom.py 的修改 (关键修正)
+    # 2.7. 针对 generate_interactive_bom.py 的修改 (关键修正)
     # -------------------------------------------------------------------------
     $GenBomFile = "InteractiveHtmlBom\generate_interactive_bom.py"
     Write-Host "   -> 修正 generate_interactive_bom.py (关键修正)..."
     $GenBomContent = Get-Content $GenBomFile -Raw
     
-    # 1. 修复 wx 导入
+    # 2.7.1. 修复 wx 导入
     $GenBomContent = $GenBomContent -replace 'import wx', '# import wx'
     
-    # 2. 关键修复：替换 main 函数开头到第一个绝对导入之间的所有 wx/GUI 启动代码
+    # 2.7.2. 关键修复：替换 main 函数开头到第一个绝对导入之间的所有 wx/GUI 启动代码
     $replacementBlock = @"
 def main():
     create_wx_app = 'INTERACTIVE_HTML_BOM_NO_DISPLAY' not in os.environ
@@ -393,7 +358,7 @@ def main():
     $pattern = '(?smi)def main\(\):.*?from \.core import ibom'
     $GenBomContent = $GenBomContent -replace $pattern, $replacementBlock
 
-    # 3. 修复顶层代码的缩进问题 (解决所有 IndentationError 的残留)
+    # 2.7.3. 修复顶层代码的缩进问题 (解决所有 IndentationError 的残留)
     $lines = $GenBomContent -split "`n"
     $cleanedLines = @()
     $foundDefOrClass = $false
@@ -410,23 +375,23 @@ def main():
     }
     $GenBomContent = $cleanedLines -join "`n"
 
-    # 4. 【终极路径和导入清理】解决 NameError 和 _internal 错误
+    # 2.7.4. 【终极路径和导入清理】解决 NameError 和 _internal 错误
     Write-Host "   -> 终极路径清理：禁用所有 sys.path 注入和相对导入..."
     
-    # 4.1. 禁用原始的相对导入修复代码块 (包含 script_dir 定义和使用)
+    # 2.7.4.1. 禁用原始的相对导入修复代码块 (包含 script_dir 定义和使用)
     $RelativeImportBlockPattern = '(?smi)script_dir = os\.path\.dirname\(os\.path\.abspath\(os\.path\.realpath\(__file__\)\)\).*?__import__\(__package__\)'
     $GenBomContent = $GenBomContent -replace $RelativeImportBlockPattern, '# Original Relative Import Block Disabled'
     
-    # 4.2. 确保清除所有残留的 script_dir / __package__ 引用
+    # 2.7.4.2. 确保清除所有残留的 script_dir / __package__ 引用
     $GenBomContent = $GenBomContent -replace '^\s*__package__ = os\.path\.basename\(script_dir\)', '# __package__ Disabled'
     
-    # 4.3. 移除所有残留的 sys.path.insert 调用
+    # 2.7.4.3. 移除所有残留的 sys.path.insert 调用
     $GenBomContent = $GenBomContent -replace '^\s*sys\.path\.insert\(0,.*', '# sys.path.insert(0, DISABLED)'
     
-    # 4.4. 移除所有之前尝试修复的 PyInstaller 路径注入残留块
+    # 2.7.4.4. 移除所有之前尝试修复的 PyInstaller 路径注入残留块
     $GenBomContent = $GenBomContent -replace '^\s*# --- PyInstaller Module Fix ---.*?# --- PyInstaller Module Fix ---\s*', ''
 
-    # 5. 【绝对导入替换】全面替换所有相对导入为绝对导入 (解决 _internal 错误)
+    # 2.7.5. 【绝对导入替换】全面替换所有相对导入为绝对导入 (解决 _internal 错误)
     Write-Host "   -> 终极导入修复：全面替换相对导入为绝对导入..."
     $GenBomContent = $GenBomContent -replace 'from \.core import ibom', 'from InteractiveHtmlBom.core import ibom' # 确保 main() 函数后的第一个导入也被修正
     $GenBomContent = $GenBomContent -replace 'from \.core\.config import Config', 'from InteractiveHtmlBom.core.config import Config'
@@ -452,64 +417,57 @@ def main():
     # 4. 执行 PyInstaller 打包 (切换到 --onedir 模式)
     # -------------------------------------------------------------------------
     Write-Host ""
-    Write-Host "4. 正在执行 PyInstaller 打包 (使用 --onedir)..."
+    Write-Host "4. 正在执行 PyInstaller 打包 (使用 --onedir)..." -ForegroundColor Yellow
 
     # 使用数组传递参数
-$PyInstallerArgs = @(
-    "--noconfirm",
-    "--onedir", # 切换为单目录模式
-    "--icon", "bomicon.ico",
-    # 解决 ModuleNotFoundError 的关键
-    "--hidden-import", "InteractiveHtmlBom.core",
-    "--hidden-import", "InteractiveHtmlBom.ecad",
-    "--hidden-import", "InteractiveHtmlBom.errors",
-    "--hidden-import", "InteractiveHtmlBom.version",
-    "--hidden-import", "InteractiveHtmlBom.dialog",
-    # 关键修正：添加整个包目录到可执行文件根目录
-    "--add-data", "InteractiveHtmlBom;InteractiveHtmlBom",
-    # 设置 EXE 名称
-    "--name", "generate_interactive_bom",
-    # 主脚本文件
-    "InteractiveHtmlBom\generate_interactive_bom.py"
-)
+    $PyInstallerArgs = @(
+        "--noconfirm",
+        "--onedir", # 切换为单目录模式
+        "--icon", "bomicon.ico",
+        # 解决 ModuleNotFoundError 的关键
+        "--hidden-import", "InteractiveHtmlBom.core",
+        "--hidden-import", "InteractiveHtmlBom.ecad",
+        "--hidden-import", "InteractiveHtmlBom.errors",
+        "--hidden-import", "InteractiveHtmlBom.version",
+        "--hidden-import", "InteractiveHtmlBom.dialog",
+        # 关键修正：添加整个包目录到可执行文件根目录
+        "--add-data", "InteractiveHtmlBom;InteractiveHtmlBom",
+        # 设置 EXE 名称
+        "--name", "generate_interactive_bom",
+        # 主脚本文件
+        "InteractiveHtmlBom\generate_interactive_bom.py"
+    )
 
-# 关键修复：临时保存当前的 $ErrorActionPreference 并将其设置为 SilentlyContinue
-$OriginalErrorActionPreference = $ErrorActionPreference
-$ErrorActionPreference = "SilentlyContinue"
+    # 关键修复：临时保存当前的 $ErrorActionPreference 并将其设置为 SilentlyContinue
+    $OriginalErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
 
-try {
-    # 执行 PyInstaller，并将其输出管道化，以确保所有内容都进入标准输出
-    & pyinstaller $PyInstallerArgs *>&1
-} catch {
-    # 即使设置了 SilentlyContinue，如果仍有异常，这里会捕获
-    Write-Host "PyInstaller 执行中仍捕获到异常，请检查其输出。" -ForegroundColor Red
-} finally {
-    # 恢复原来的 $ErrorActionPreference
-    $ErrorActionPreference = $OriginalErrorActionPreference
-}
+    try {
+        # 执行 PyInstaller，并将其输出管道化，以确保所有内容都进入标准输出
+        & pyinstaller $PyInstallerArgs *>&1
+    } catch {
+        # 即使设置了 SilentlyContinue，如果仍有异常，这里会捕获
+        Write-Host "PyInstaller 执行中仍捕获到异常，请检查其输出。" -ForegroundColor Red
+    } finally {
+        # 恢复原来的 $ErrorActionPreference
+        $ErrorActionPreference = $OriginalErrorActionPreference
+    }
 
 
-# 检查 PyInstaller 的退出代码
-if ($LASTEXITCODE -ne 0) {
-    exit_script "打包失败，请检查 PyInstaller 错误日志。"
-}
-Write-Host "打包成功完成."
+    # 检查 PyInstaller 的退出代码
+    if ($LASTEXITCODE -ne 0) {
+        exit_script "打包失败，请检查 PyInstaller 错误日志。"
+    }
+    Write-Host "打包成功完成."
 
 } catch {
     exit_script "打包流程中发生未捕获的异常: $($_.Exception.Message)"
 } finally {
-    Write-Host ""
-    Write-Host "5. 正在恢复源代码文件到原始状态..."
-    foreach ($file in $SourceFilesToModify) {
-        if ($BackupFiles.ContainsKey($file)) {
-            restore_file $file $BackupFiles[$file]
-        }
-    }
     if (-not $Global:ErrorOccurred) {
         Write-Host "源代码恢复完成。" -ForegroundColor Green
         Write-Host ""
         Write-Host "=======================================================" -ForegroundColor Green
-        Write-Host "? 恭喜！InteractiveHtmlBom CLI 打包成功！" -ForegroundColor Green
+        Write-Host "✅ 恭喜！InteractiveHtmlBom CLI 打包成功！" -ForegroundColor Green
         Write-Host "EXE 文件位于 dist\generate_interactive_bom\generate_interactive_bom.exe" -ForegroundColor Green
         Write-Host "=======================================================" -ForegroundColor Green
     }
