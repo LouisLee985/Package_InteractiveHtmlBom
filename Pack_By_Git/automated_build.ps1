@@ -463,7 +463,55 @@ def main():
 } catch {
     exit_script "打包流程中发生未捕获的异常: $($_.Exception.Message)"
 } finally {
+    # Set-Location ..
+    # git checkout .
     if (-not $Global:ErrorOccurred) {
+        $content = @'
+@echo off
+setlocal enabledelayedexpansion
+
+:: 检查管理员权限
+fltmc >nul 2>nul || (
+    powershell -Command "Start-Process cmd -ArgumentList '/c \"\"%~f0\"\"' -Verb RunAs"
+    exit /b
+)
+
+:: ====================== 配置区 ======================
+set "EXE_FILE=generate_interactive_bom.exe"
+set "MENU_NAME=open_with_interactivebom"
+set "MENU_TEXT=InteractiveBom"
+:: ====================================================
+
+set "EXE_PATH=%~dp0%EXE_FILE%"
+
+set "BASE_KEY=HKEY_CLASSES_ROOT\SystemFileAssociations\.json"
+set "MENU_KEY=%BASE_KEY%\shell\%MENU_NAME%"
+
+REG ADD "%BASE_KEY%\shell" /f >nul 2>&1
+REG ADD "%MENU_KEY%" /ve /t REG_SZ /d "%MENU_TEXT%" /f >nul
+REG ADD "%MENU_KEY%" /v "Icon" /t REG_SZ /d "\"%EXE_PATH%\",0" /f >nul
+REG ADD "%MENU_KEY%" /v "Extended" /t REG_SZ /d "" /f >nul
+
+set "COMMAND_KEY=%MENU_KEY%\command"
+REG ADD "%COMMAND_KEY%" /ve /t REG_SZ /d "\"%EXE_PATH%\" \"%%1\"" /f >nul
+
+echo.
+echo ========================================
+echo    .json 文件Shift+右键 即可看到：
+echo   → %MENU_TEXT%
+echo ========================================
+echo.
+pause
+del "%~dp0REG_HKCR_BOM.bat"
+endlocal
+'@
+
+        $content | Out-File -FilePath "$PSScriptRoot\dist\generate_interactive_bom\REG_HKCR_BOM.bat" -Encoding default
+        #Set-Content -Path "$PSScriptRoot\REG_HKCR_BOM.bat" -Value $content -Encoding default
+        Write-Host "已生成 REG_HKCR_BOM.bat（ANSI 编码）"
+
+        Move-Item -Path "$PSScriptRoot\dist\*" -Destination "$env:USERPROFILE\Desktop"
+
         Write-Host "源代码恢复完成。" -ForegroundColor Green
         Write-Host ""
         Write-Host "=======================================================" -ForegroundColor Green
